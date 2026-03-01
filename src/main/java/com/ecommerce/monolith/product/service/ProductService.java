@@ -1,6 +1,12 @@
 package com.ecommerce.monolith.product.service;
 
+import com.ecommerce.monolith.product.dto.CreateProductRequest;
+import com.ecommerce.monolith.product.dto.ProductDTO;
+import com.ecommerce.monolith.product.dto.UpdateProductRequest;
+import com.ecommerce.monolith.product.mapper.ProductMapper;
+import com.ecommerce.monolith.product.model.Category;
 import com.ecommerce.monolith.product.model.Product;
+import com.ecommerce.monolith.product.repository.CategoryRepository;
 import com.ecommerce.monolith.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,33 +20,93 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository repository;
+    private final CategoryRepository categoryRepository;
+    private final ProductMapper mapper;
 
+    // GET ALL
     @Transactional(readOnly = true)
-    public List<Product> getAll() {
-        return repository.findAll();
+    public List<ProductDTO> getAll() {
+        return repository.findAll()
+                .stream()
+                .map(this::toDtoWithCategory)
+                .toList();
     }
 
+    // GET BY ID
     @Transactional(readOnly = true)
-    public Product getById(Long id) {
-        return repository.findById(id)
+    public ProductDTO getById(Long id) {
+        Product product = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + id));
+
+        return toDtoWithCategory(product);
     }
 
-    public Product create(Product product) {
-        return repository.save(product);
+    // CREATE
+    public ProductDTO create(CreateProductRequest request) {
+
+        Product product = mapper.fromCreate(request);
+
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findById(request.categoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + request.categoryId()));
+            product.setCategory(category);
+        }
+
+        Product saved = repository.save(product);
+
+        return toDtoWithCategory(saved);
     }
 
-    public Product update(Long id, Product details) {
-        Product product = getById(id);
-        product.setName(details.getName());
-        product.setDescription(details.getDescription());
-        product.setPrice(details.getPrice());
-        product.setStock(details.getStock());
-        return product;
+    // UPDATE
+    public ProductDTO update(Long id, UpdateProductRequest request) {
+
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + id));
+
+        mapper.updateProductFromRequest(request, product);
+
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findById(request.categoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + request.categoryId()));
+            product.setCategory(category);
+        } else {
+            product.setCategory(null);
+        }
+
+        Product saved = repository.save(product);
+
+        return toDtoWithCategory(saved);
     }
 
+    // DELETE
     public void delete(Long id) {
-        Product product = getById(id);
-        repository.delete(product);
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException("Product not found with id: " + id);
+        }
+        repository.deleteById(id);
+    }
+
+    // =============================
+    // PRIVATE MAPPING HELPER
+    // =============================
+    private ProductDTO toDtoWithCategory(Product p) {
+
+        Long categoryId = null;
+        String categoryName = null;
+
+        if (p.getCategory() != null) {
+            categoryId = p.getCategory().getId();
+            categoryName = p.getCategory().getName();
+        }
+
+        return new ProductDTO(
+                p.getId(),
+                p.getName(),
+                p.getDescription(),
+                p.getPrice(),
+                p.getStock(),
+                categoryId,
+                categoryName
+        );
     }
 }

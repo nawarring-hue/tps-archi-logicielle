@@ -1,12 +1,13 @@
 package com.ecommerce.monolith.product.controller;
 
-import com.ecommerce.monolith.product.model.Product;
+import com.ecommerce.monolith.product.dto.CreateProductRequest;
+import com.ecommerce.monolith.product.dto.ProductDTO;
+import com.ecommerce.monolith.product.dto.UpdateProductRequest;
 import com.ecommerce.monolith.product.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,31 +15,29 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@Validated
 public class ProductController {
 
     private final ProductService service;
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAll() {
+    public ResponseEntity<List<ProductDTO>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getById(@PathVariable Long id) {
+    public ResponseEntity<ProductDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
-        Product created = service.create(product);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<ProductDTO> create(@Valid @RequestBody CreateProductRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Long id, @Valid @RequestBody Product product) {
-        Product updated = service.update(id, product);
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<ProductDTO> update(@PathVariable Long id,
+                                             @Valid @RequestBody UpdateProductRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
